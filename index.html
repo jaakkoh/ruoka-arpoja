@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mitäs tänään syötäisiin?</title>
+  <style>
+    :root {font-family:system-ui,sans-serif;color:#243e35;background:#f7f5ed;color-scheme:light}
+    * {box-sizing:border-box} body {margin:0} main {max-width:780px;margin:auto;padding:48px 22px}
+    .eyebrow {font-size:12px;font-weight:750;letter-spacing:2px;color:#677963} h1 {font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-1.5px;margin:16px 0}
+    .intro {color:#66756d;line-height:1.6} fieldset {border:0;padding:0;margin:30px 0 22px} legend {font-weight:650;margin-bottom:12px}
+    .choices {display:flex;flex-wrap:wrap;gap:10px} .choice {position:relative} .choice input {position:absolute;opacity:0}
+    .choice span {display:block;padding:12px 20px;border:1px solid #ced6c9;border-radius:30px;cursor:pointer;background:#fff}
+    .choice input:checked+span {background:#264c3c;color:white;border-color:#264c3c} .choice input:focus-visible+span {outline:3px solid #d88a2f;outline-offset:3px}
+    .card {background:white;border:1px solid #e1e5da;border-radius:24px;padding:32px;min-height:235px;box-shadow:0 10px 35px #294b3410}
+    .tag {color:#6b795f;font-size:13px;font-weight:650} h2 {font-size:28px;line-height:1.25;margin:12px 0 20px} .details {line-height:1.7;color:#53645a}.details p {margin:7px 0}
+    button {font:inherit;cursor:pointer} #draw {width:100%;margin:18px 0 10px;padding:17px;background:#dfeaa7;color:#294631;border:0;border-radius:14px;font-weight:750;font-size:18px} #draw:hover {background:#d1e18b} button:focus-visible,summary:focus-visible {outline:3px solid #b77124;outline-offset:4px}
+    #count {font-size:13px;color:#6b796e;text-align:center} details {margin-top:34px;border-top:1px solid #d9dfd1;padding-top:22px} summary {cursor:pointer;font-weight:650} ul {list-style:none;padding:0} li {padding:14px 0;border-bottom:1px solid #e2e6dc;line-height:1.5} li small {display:block;color:#65766a} .note {font-size:13px;line-height:1.6;color:#6b796e} @media(max-width:500px){main{padding-top:28px}.card{padding:24px}h2{font-size:25px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">PERHEEN SUOSIKIT</div>
+  <h1>Mitäs tänään<br>syötäisiin?</h1>
+  <p class="intro">Yksi päätös vähemmän. Arvotaan lasten suosikkilistalta päivän ruoka.</p>
+  <fieldset><legend>Kenelle ruoka arvotaan?</legend><div class="choices">
+    <label class="choice"><input type="radio" name="child" value="both" checked><span>Molemmille</span></label>
+    <label class="choice"><input type="radio" name="child" value="r"><span>R:lle</span></label>
+    <label class="choice"><input type="radio" name="child" value="s"><span>S:lle</span></label>
+  </div></fieldset>
+  <section class="card" aria-live="polite" aria-atomic="true"><div class="tag" id="tag">PÄIVÄN RUOKA</div><h2 id="name">Nälkä? Annetaan arvan päättää.</h2><div class="details" id="details">Paina alta, niin saat ruokaehdotuksen.</div></section>
+  <button id="draw" type="button">Arvo ruoka ↗</button>
+  <div id="count"></div>
+  <details><summary>Katso suosikkiruokalista</summary><ul id="list"></ul></details>
+  <p class="note">R: vain R:n suosikki · S: vain S:n suosikki. Muut ruoat ovat mukana kummankin arvonnassa. Molemmille-arvonnassa pika-annos sisältää R:lle nugetit ja S:lle kalapuikot. Tähtiarviot eivät vaikuta arvontaan.</p>
+</main>
+<script>
+const meals = [
+  {name:'Spagetti au naturel', topping:'Juustoraaste (grana padano)', ingredients:'Spagetti', stars:'R: ★★★★ · S: ★★★★'},
+  {name:'Spagetti bolognese', ingredients:'Spaghetti, jauheliha, tomaattimurska, sipuli, soija, kerma tai crème fraîche'},
+  {name:'Raviolit, ricotta + pinaatti', note:'Rana', ingredients:'Valmiit raviolit'},
+  {name:'Makaronilaatikko', topping:'Ketsuppi', ingredients:'Makaroni, jauheliha, sipuli, kananmuna, soija, maito', stars:'S: ★★★★★'},
+  {name:'Kanasuikale-kermakastike-paistos', side:'Riisi', topping:'Puolukkahillo', note:'Riittävästi kastiketta!', ingredients:'Kanasuikale, kerma, riisi, sipuli, soija', stars:'S: ★★★★★'},
+  {name:'Mummun curry-kana'},
+  {name:'Mummun kalakeitto'},
+  {name:'Äidin pinaattiletut'},
+  {name:'Kodin pika-annos', quick:true},
+  {name:'Pizza margarita', note:'Joskus myös tonnikalaa'},
+  {name:'Äidin paistettu kananmuna'},
+  {name:'Lohifilepalat paistettuna', note:'Air fryer'},
+  {name:'Savulohi, isin savustama', note:'Kevyesti savustettu!'},
+  {name:'Grillikana tacoilla'},
+  {name:'Grillikana', side:'Millä vaan herkulla'},
+  {name:'Ikean lihapullat', side:'Perunamuusi ja ruskea kastike'},
+  {name:'Äidin bataatit'}
+];
+let previous = -1;
+const el = id => document.getElementById(id);
+const selected = () => document.querySelector('input[name="child"]:checked').value;
+function quickText() {return selected()==='both' ? 'R:lle nugetit · S:lle kalapuikot' : selected()==='r' ? 'R: nugetit' : 'S: kalapuikot';}
+function addDetail(label, value) {
+  if (!value) return;
+  const p=document.createElement('p');
+  const b=document.createElement('strong'); b.textContent=label+' ';
+  p.append(b,document.createTextNode(value)); el('details').append(p);
+}
+function renderList() {
+  el('list').replaceChildren();
+  meals.forEach(meal=>{const li=document.createElement('li');li.textContent=meal.name;
+    const extra=[meal.quick ? quickText() : '',meal.side ? 'Lisuke: '+meal.side : '',meal.topping ? 'Höyste: '+meal.topping : '',meal.note,meal.ingredients ? 'Raaka-aineet: '+meal.ingredients : '',meal.stars].filter(Boolean);
+    extra.forEach(text=>{const small=document.createElement('small');small.textContent=text;li.append(small);});el('list').append(li);
+  });
+  el('count').textContent=meals.length+' ruokavaihtoehtoa · Ei samaa ruokaa kahta kertaa peräkkäin';
+}
+el('draw').addEventListener('click',()=>{
+  const candidates=meals.map((_,i)=>i).filter(i=>i!==previous);
+  previous=candidates[Math.floor(Math.random()*candidates.length)];
+  const meal=meals[previous];
+  el('tag').textContent={both:'TÄNÄÄN MOLEMMILLE',r:'TÄNÄÄN R:LLE',s:'TÄNÄÄN S:LLE'}[selected()];
+  el('name').textContent=meal.name;el('details').replaceChildren();
+  addDetail('Annos:',meal.quick ? quickText() : '');addDetail('Lisuke:',meal.side);addDetail('Höyste:',meal.topping);addDetail('Muista:',meal.note);addDetail('Raaka-aineet:',meal.ingredients);addDetail('Suosikkitähdet:',meal.stars);
+  el('draw').textContent='Arvo uudelleen ↻';
+});
+document.querySelectorAll('input[name="child"]').forEach(input=>input.addEventListener('change',()=>{
+  el('tag').textContent='PÄIVÄN RUOKA';el('name').textContent='Kenelle tänään kokataan?';el('details').textContent='Valinta vaihdettu. Arvo seuraava ruoka.';el('draw').textContent='Arvo ruoka ↗';renderList();
+}));
+renderList();
+</script>
+</body>
+</html>
